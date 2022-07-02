@@ -1,5 +1,7 @@
 # List all C files here
-_DRIVERSSRC = 
+_DRIVERSSRC = max-m8c/src/ublox.c
 
-DRIVERSSRC := $(_DRIVERSSRC:%=$(DRIVERSPATH)/src/%)
-DRIVERSINC := $(DRIVERSPATH)/include
+_DRIVERSINC = max-m8c/include
+
+DRIVERSSRC := $(_DRIVERSSRC:%=$(DRIVERSPATH)/%)
+DRIVERSINC := $(_DRIVERSINC:%=$(DRIVERSPATH)/%)

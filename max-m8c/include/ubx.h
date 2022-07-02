@@ -1,14 +1,9 @@
-/* UBX PROTOCOL
- *
- * Copyright (C) 2022 CU Spaceflight
- * Authors:
- * * Greg Brooks
- * * Henry Franks
- * * William Yu
- * 
-
 #ifndef __UBX_H__
 #define __UBX_H__
+
+/*
+ * Private definitions of ubx packets
+ */
 
 /* UBX sync bytes */
 #define UBX_SYNC1 0xB5
@@ -222,7 +217,7 @@ typedef struct __attribute__((packed)) {
      uint8_t sync1, sync2, class, id;
      uint16_t length;
      union {
-         uint8_t payload[44];
+         uint8_t payload[60];
          struct {
             uint8_t msg_ver;
             uint8_t num_trk_ch_hw;
@@ -238,11 +233,21 @@ typedef struct __attribute__((packed)) {
             uint8_t sbas_max_trk_ch;
             uint8_t sbas_reserved1;
             uint32_t sbas_flags;
+            uint8_t galileo_gnss_id;
+            uint8_t galileo_res_trk_ch;
+            uint8_t galileo_max_trk_ch;
+            uint8_t galileo_reserved1;
+            uint32_t galileo_flags;
             uint8_t beidou_gnss_id;
             uint8_t beidou_res_trk_ch;
             uint8_t beidou_max_trk_ch;
             uint8_t beidou_reserved1;
             uint32_t beidou_flags;
+            uint8_t imes_gnss_id;
+            uint8_t imes_res_trk_ch;
+            uint8_t imes_max_trk_ch;
+            uint8_t imes_reserved1;
+            uint32_t imes_flags;
             uint8_t qzss_gnss_id;
             uint8_t qzss_res_trk_ch;
             uint8_t qzss_max_trk_ch;
