@@ -56,4 +56,10 @@ void ublox_init(SerialDriver* seriald);
 /* Init GPS Thread */
 void ublox_thd_init(void);
 
+uint16_t ublox_fletcher_8(uint16_t chk, uint8_t *buf, uint8_t n);
+void ublox_checksum(uint8_t *buf);
+bool ublox_transmit(uint8_t *buf);
+bool gps_configure(void);
+bool gps_tx_ack(uint8_t *buf);
+
 #endif /* UBLOX_H */
