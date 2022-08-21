@@ -14,6 +14,10 @@
 #include "ublox.h"
 #include "ubx.h"
 
+#if DEBUG
+#include "debug.h"
+#endif
+
 
 /* USEFUL MACROS */
 #define HEADER_SIZE sizeof(ubx_header_t)
@@ -53,8 +57,8 @@ static inline int ublox_check_packets(void)
 
   sync1 = sdGet(ublox_seriald);
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > > > [SYNC] Sync 1: 0x%02x\r\n", sync1);
+#if DEBUG
+  DEBUG_PRINT("   > > > [SYNC] Sync 1: 0x%02x\r\n", sync1);
 #endif
 
   if (sync1 != UBX_SYNC1) return 0;
@@ -63,8 +67,8 @@ static inline int ublox_check_packets(void)
   while (1) {
     sync2 = sdGet(ublox_seriald);
 
-#if VERBOSE_DEBUG_GPS
-    chprintf(&SD4, "   > > > [SYNC] Sync 2: 0x%x\r\n", sync2);
+#if DEBUG
+    DEBUG_PRINT("   > > > [SYNC] Sync 2: 0x%x\r\n", sync2);
 #endif
 
     if (sync2 == UBX_SYNC2)      return 1; /* sync successful   */
@@ -80,14 +84,14 @@ static inline ubx_header_t ublox_get_header(void)
 {
   ubx_header_t header;
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, (uint8_t *)"   > > > Waiting for New UBX Packet\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > > > Waiting for New UBX Packet");
 #endif
 
   while (!ublox_check_packets());
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, (uint8_t *)"   > > > UBX Packet Found!\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > > > UBX Packet Found!");
 #endif
 
   header.class = sdGet(ublox_seriald);
@@ -130,8 +134,8 @@ static int ublox_send_packet(uint8_t* packet, bool check_ack)
     uint8_t raw_data[sizeof(ubx_ack_t)];
   } payload;
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > > Beginning Packet Send\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > > Beginning Packet Send");
 #endif
 
   packet_header = (ubx_header_t*) packet;
@@ -141,66 +145,66 @@ static int ublox_send_packet(uint8_t* packet, bool check_ack)
   /* add checksum */
   ubx_add_checksum(packet);
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > > Checksum Added\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > > Checksum Added");
 #endif
 
   /* determine the timeout required to send the packet */
   /* currently assuming 2ms per byte */
   timeout = TIME_MS2I(2 * packet_size);
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > > Beginning Write\r\n");
-  chprintf(&SD4, "   > > Buffer:\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > > Beginning Write");
+  DEBUG_PRINTLN("   > > Buffer:");
 
-  ubx_header_t* header = packet;
+  ubx_header_t* header = (ubx_header_t*)packet;
 
-  chprintf(&SD4, "   > > [HEADER]   SYNC1 | SYNC2 | CLASS | ID   | LENGTH\r\n");
-  chprintf(&SD4, "   > > [HEADER]   0x%02x  | 0x%02x  | 0x%02x  | 0x%02x | 0x%04x\r\n",
-           header->sync1, header->sync2, header->class, header->id, header->length);
+  DEBUG_PRINTLN("   > > [HEADER]   SYNC1 | SYNC2 | CLASS | ID   | LENGTH");
+  DEBUG_PRINT("   > > [HEADER]   0x%02x  | 0x%02x  | 0x%02x  | 0x%02x | 0x%04x\r\n",
+              header->sync1, header->sync2, header->class, header->id, header->length);
 
   size_t offset = header->length + HEADER_SIZE;
 
   for (size_t i = HEADER_SIZE; i < offset; i++)
-    chprintf(&SD4, "   > > [PAYLOAD]  0x%02x\r\n", packet[i]);
+    DEBUG_PRINT("   > > [PAYLOAD]  0x%02x\r\n", packet[i]);
 
-  ubx_checksum_t* checksum = packet + offset;
-  chprintf(&SD4, "   > > [CHECKSUM] CK_A | CK_B\r\n");
-  chprintf(&SD4, "   > > [CHECKSUM] 0x%02x | 0x%02x\r\n", checksum->ck_a, checksum->ck_b);
+  ubx_checksum_t* checksum = (ubx_checksum_t*)(packet + offset);
+  DEBUG_PRINTLN("> > [CHECKSUM] CK_A | CK_B");
+  DEBUG_PRINT("   > > [CHECKSUM] 0x%02x | 0x%02x\r\n", checksum->ck_a, checksum->ck_b);
 #endif
 
   /* write to serial buffer */
   ublox_flush_buffer();
   bytes_written = sdWriteTimeout(ublox_seriald, packet, packet_size, timeout);
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > > Write Complete\r\n");
-  chprintf(&SD4, "   > > Bytes Written: %d\r\n", bytes_written);
-  chprintf(&SD4, "   > > > Header:   %d\r\n", HEADER_SIZE);
-  chprintf(&SD4, "   > > > Payload:  %d\r\n", header->length);
-  chprintf(&SD4, "   > > > Checksum: %d\r\n", CHECKSUM_SIZE);
-  chprintf(&SD4, "   > > Packet Size: %d\r\n", packet_size);
+#if DEBUG
+  DEBUG_PRINTLN("   > > Write Complete");
+  DEBUG_PRINT("   > > Bytes Written: %d\r\n", bytes_written);
+  DEBUG_PRINT("   > > > Header:   %d\r\n", HEADER_SIZE);
+  DEBUG_PRINT("   > > > Payload:  %d\r\n", header->length);
+  DEBUG_PRINT("   > > > Checksum: %d\r\n", CHECKSUM_SIZE);
+  DEBUG_PRINT("   > > Packet Size: %d\r\n", packet_size);
 #endif
 
   if (bytes_written != packet_size) return 0;
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > > [PASS] All Bytes Written\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > > [PASS] All Bytes Written");
 #endif
 
   if (!check_ack) return 1;
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > > Waiting for Ack...\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > > Waiting for Ack...");
 #endif
 
   /* TODO: implement timeout */
   do {
     ack_header = ublox_get_header();
-#if VERBOSE_DEBUG_GPS
-    chprintf(&SD4, "   > > [HEADER]   SYNC1 | SYNC2 | CLASS | ID   | LENGTH\r\n");
-    chprintf(&SD4, "   > > [HEADER]   0x%02x  | 0x%02x  | 0x%02x  | 0x%02x | 0x%04x\r\n",
-             ack_header.sync1, ack_header.sync2, ack_header.class, ack_header.id, ack_header.length);
+#if DEBUG
+    DEBUG_PRINTLN("   > > [HEADER]   SYNC1 | SYNC2 | CLASS | ID   | LENGTH");
+    DEBUG_PRINT("   > > [HEADER]   0x%02x  | 0x%02x  | 0x%02x  | 0x%02x | 0x%04x\r\n",
+                ack_header.sync1, ack_header.sync2, ack_header.class, ack_header.id, ack_header.length);
 #endif
   } while (
     !(ack_header.class == UBX_CLASS_ACK &&
@@ -213,8 +217,8 @@ static int ublox_send_packet(uint8_t* packet, bool check_ack)
       payload.ack.msg_id == packet_header->id)
   );
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > > Ack Received\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > > Ack Received");
 #endif
 
   return (ack_header.id == UBX_ACK_ACK);
@@ -490,8 +494,8 @@ static THD_FUNCTION(ublox_thd, arg)
 
 void ublox_reset(void)
 {
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "...Resetting U-blox Hardware: ");
+#if DEBUG
+  DEBUG_PRINT("...Resetting U-blox Hardware: ");
 #endif
 
   /* Toggle GPS reset line according to the following profile: */
@@ -509,30 +513,30 @@ void ublox_reset(void)
   palSetLine(LINE_GPS_RESET);
   chThdSleepMilliseconds(500);
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "Complete!\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("Complete!");
 #endif
 }
 
 void ublox_init(SerialDriver* seriald)
 {
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "Initialising U-blox (GPS) Module...\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("Initialising U-blox (GPS) Module...");
 #endif
 
   ublox_seriald = seriald;
 
   /* We'll reset the uBlox so it's in a known state */
   ublox_reset();
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "...Starting Serial Interface: ");
+#if DEBUG
+  DEBUG_PRINT("...Starting Serial Interface: ");
 #endif
 
   sdStart(ublox_seriald, &serial_cfg);
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "Complete!\r\n");
-  chprintf(&SD4, "...Waiting for GPS Configuration (blocking operation):\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("Complete!");
+  DEBUG_PRINTLN("...Waiting for GPS Configuration (blocking operation):");
 #endif
 
   union {
@@ -548,67 +552,68 @@ void ublox_init(SerialDriver* seriald)
 
   config_flags.byte_val = 0x00;
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > Port\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > Port");
 #endif
   config_flags.port = ublox_configure_port();
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > GNSS\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > GNSS");
 #endif
   config_flags.gnss = ublox_configure_gnss();
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > Navigation\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > Navigation");
 #endif
   config_flags.navigation = ublox_configure_navigation();
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > SBAS\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > SBAS");
 #endif
   config_flags.sbas = ublox_configure_sbas();
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "   > POSECEF\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("   > POSECEF");
 #endif
   config_flags.posecef = ublox_configure_posecef();
 
   if (config_flags.byte_val == 0x00) {
     gps_configured = true;
-#if VERBOSE_DEBUG_GPS
-    chprintf(&SD4, "   > GPS Successfully Configured!\r\n");
+#if DEBUG
+    DEBUG_PRINTLN("   > GPS Successfully Configured!");
   } else {
-    chprintf(&SD4, "   > GPS Configuration Unsuccessful.\r\n");
+    DEBUG_PRINTLN("   > GPS Configuration Unsuccessful.");
 
-    chprintf(&SD4,
+    DEBUG_PRINT(
         config_flags.port ? "   > > Port: [PASS]\r\n" :
                             "   > > Port: [FAIL]\r\n"
     );
 
-    chprintf(&SD4,
+    DEBUG_PRINT(
         config_flags.gnss ? "   > > GNSS: [PASS]\r\n" :
                             "   > > GNSS: [FAIL]\r\n"
     );
 
-    chprintf(&SD4,
+    DEBUG_PRINT(
         config_flags.navigation ? "   > > Navigation: [PASS]\r\n" :
                                   "   > > Navigation: [FAIL]\r\n"
     );
 
-    chprintf(&SD4,
+    DEBUG_PRINT(
         config_flags.sbas ? "   > > SBAS: [PASS]\r\n" :
                             "   > > SBAS: [FAIL]\r\n"
     );
 
-    chprintf(&SD4,
+    DEBUG_PRINT(
         config_flags.posecef ? "   > > POSECEF: [PASS]\r\n" :
                                "   > > POSECEF: [FAIL]\r\n"
     );
 #endif
   }
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "U-blox (GPS) Module Init Complete!\r\n\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("U-blox (GPS) Module Init Complete!");
+  DEBUG_PRINTLN();
 #endif
 
   return;
@@ -617,14 +622,15 @@ void ublox_init(SerialDriver* seriald)
 /* Init GPS Thread */
 void ublox_thd_init(void)
 {
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "Initialising U-blox (GPS) Thread...\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("Initialising U-blox (GPS) Thread...");
 #endif
 
   chThdCreateStatic(ublox_thd_wa, sizeof(ublox_thd_wa), NORMALPRIO, ublox_thd, NULL);
 
-#if VERBOSE_DEBUG_GPS
-  chprintf(&SD4, "U-blox (GPS) Thread Init Complete!\r\n\r\n");
+#if DEBUG
+  DEBUG_PRINTLN("U-blox (GPS) Thread Init Complete!");
+  DEBUG_PRINTLN();
 #endif
 
   return;
