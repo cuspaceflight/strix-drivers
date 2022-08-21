@@ -249,17 +249,13 @@ static const USBDescriptor *get_descriptor(USBDriver *usbp,
   (void)lang;
   switch (dtype) {
   case USB_DESCRIPTOR_DEVICE:
-    chprintf(&SD4, (uint8_t *)"DEVICE DESCRIPTOR\r\n");
     return &vcom_device_descriptor;
   case USB_DESCRIPTOR_CONFIGURATION:
-    chprintf(&SD4, (uint8_t *)"CONFIG DESCRIPTOR\r\n");
     return &vcom_configuration_descriptor;
   case USB_DESCRIPTOR_STRING:
-    chprintf(&SD4, (uint8_t *)"STRING DESCRIPTOR\r\n");
     if (dindex < 4)
       return &vcom_strings[dindex];
   }
-  chprintf(&SD4, (uint8_t *)"HELP\r\n");
   return NULL;
 }
 
@@ -315,8 +311,6 @@ static const USBEndpointConfig ep2config = {
  */
 static void usb_event(USBDriver *usbp, usbevent_t event) {
   extern SerialUSBDriver usb_driver;
-
-  chprintf(&SD4, (uint8_t *)"USB EVENT: %x\r\n", event);
 
   switch (event) {
   case USB_EVENT_ADDRESS:

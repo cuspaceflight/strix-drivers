@@ -70,14 +70,6 @@ void usb_init(void) {
   usbStart(serusbcfg.usbp, &usbcfg);
   usbConnectBus(serusbcfg.usbp);
 
-//  while(USBD2.state != USB_READY) {
-//    chprintf(&SD4, "USB waiting... state: %x\r\n", USBD2.state);
-//    chThdSleepMilliseconds(10);
-//  }
-//  chprintf(&SD4, "USB READY!\r\n");
-//
-//  while(usb_driver.state != SDU_READY) chThdSleepMilliseconds(10); // (sduStart is in the main thread)
-
   /*
    * Shell manager initialization.
    * Event zero is shell exit.
@@ -123,7 +115,6 @@ void usb_thd_init(void)
 
 void usb_test(void)
 {
-  chnWriteTimeout(&usb_driver, "TEST\r\n", 6, TIME_MS2I(100));
   chThdSleepMilliseconds(1000);
   return;
 }
