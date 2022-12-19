@@ -75,7 +75,7 @@ static inline int ublox_check_packets(void)
     else if (sync2 != UBX_SYNC1) return 0; /* sync unsuccessful */
   }
 
-  /* this shoudln't be reached, so if we got here return an "error" */
+  /* this shouldn't be reached, so if we got here return an "error" */
   /* (ie the same as no sync) */
   return 0;
 }
