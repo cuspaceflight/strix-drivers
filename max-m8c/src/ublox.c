@@ -57,7 +57,7 @@ static inline int ublox_check_packets(void)
 
   sync1 = sdGet(ublox_seriald);
 
-#if DEBUG
+#if DEBUG && 0
   DEBUG_PRINT("   > > > [SYNC] Sync 1: 0x%02x\r\n", sync1);
 #endif
 
@@ -67,7 +67,7 @@ static inline int ublox_check_packets(void)
   while (1) {
     sync2 = sdGet(ublox_seriald);
 
-#if DEBUG
+#if DEBUG && 0
     DEBUG_PRINT("   > > > [SYNC] Sync 2: 0x%x\r\n", sync2);
 #endif
 
@@ -98,6 +98,12 @@ static inline ubx_header_t ublox_get_header(void)
   header.id    = sdGet(ublox_seriald);
   header.length = (((uint16_t)sdGet(ublox_seriald) & 0xFF) << 0) |
                   (((uint16_t)sdGet(ublox_seriald) & 0xFF) << 8);
+
+#if DEBUG
+  DEBUG_PRINT("   > > > [CLASS]  0x%02x\r\n", header.class);
+  DEBUG_PRINT("   > > > [ID]     0x%02x\r\n", header.id);
+  DEBUG_PRINT("   > > > [LENGTH] 0x%04x\r\n", header.length);
+#endif
 
   return header;
 }
@@ -169,7 +175,7 @@ static int ublox_send_packet(uint8_t* packet, bool check_ack)
     DEBUG_PRINT("   > > [PAYLOAD]  0x%02x\r\n", packet[i]);
 
   ubx_checksum_t* checksum = (ubx_checksum_t*)(packet + offset);
-  DEBUG_PRINTLN("> > [CHECKSUM] CK_A | CK_B");
+  DEBUG_PRINTLN("   > > [CHECKSUM] CK_A | CK_B");
   DEBUG_PRINT("   > > [CHECKSUM] 0x%02x | 0x%02x\r\n", checksum->ck_a, checksum->ck_b);
 #endif
 
@@ -289,8 +295,8 @@ static inline int ublox_configure_gnss(void)
 
     .config = {
       .msg_ver = 0x00,
-      .num_trk_ch_hw = 32,  /* FIXME: are these read-only? */
-      .num_trk_ch_use = 32, /* ^^^^^^^^^^^^^^^^^^^^^^^^^^^ */
+      .num_trk_ch_hw = 32,
+      .num_trk_ch_use = 32,
       .num_config_blocks = 7,
 
       /* CONFIG BLOCK 1: GPS  */
@@ -301,8 +307,7 @@ static inline int ublox_configure_gnss(void)
       .gps_flags = {
         .en = 1,
         .sig_cfg_mask = (
-            UBX_CFG_GNSS_FLAGS_GPS_L1C_A |
-            UBX_CFG_GNSS_FLAGS_GPS_L2C
+            UBX_CFG_GNSS_FLAGS_GPS_L1C_A
         )
       },
 
@@ -322,17 +327,8 @@ static inline int ublox_configure_gnss(void)
       .imes_gnss_id = UBX_GNSS_ID_IMES,
 
       /* CONFIG BLOCK 6: QZSS */
-      /* enable L1C/A, L2C    */
+      /* disable    */
       .qzss_gnss_id = UBX_GNSS_ID_QZSS,
-      .qzss_res_trk_ch = 1,
-      .qzss_max_trk_ch = 1,
-      .qzss_flags = {
-         .en = 1,
-         .sig_cfg_mask = (
-             UBX_CFG_GNSS_FLAGS_QZSS_L1C_A |
-             UBX_CFG_GNSS_FLAGS_QZSS_L2C
-         )
-      },
 
       /* CONFIG BLOCK 7: GLONASS */
       /* disable                 */
@@ -342,6 +338,62 @@ static inline int ublox_configure_gnss(void)
 
   return ublox_send_packet((uint8_t*) &packet, true);
 }
+
+static inline int ublox_configure_gnss_gps_only(void)
+{
+  struct __attribute__((packed)) {
+    ubx_header_t header;
+    ubx_cfg_gnss_gps_only_t config;
+    ubx_checksum_t checksum;
+  } packet = {
+    .header = {
+      .sync1  = UBX_SYNC1,
+      .sync2  = UBX_SYNC2,
+      .class  = UBX_CLASS_CFG,
+      .id     = UBX_CFG_GNSS,
+      .length = (uint16_t) sizeof(ubx_cfg_gnss_gps_only_t)
+    },
+
+    .config = {
+      .msg_ver = 0x00,
+      .num_trk_ch_hw = 32,
+      .num_trk_ch_use = 32,
+      .num_config_blocks = 5,
+
+      /* CONFIG BLOCK 1: GPS  */
+      /* enable L1C/A and L2C */
+      .gps_gnss_id = UBX_GNSS_ID_GPS,
+      .gps_res_trk_ch = 31,
+      .gps_max_trk_ch = 31,
+      .gps_flags = {
+        .en = 1,
+        .sig_cfg_mask = (
+            UBX_CFG_GNSS_FLAGS_GPS_L1C_A
+        )
+      },
+
+      /* CONFIG BLOCK 2: QZSS */
+      /* enable L1C/A, L2C    */
+      .qzss_gnss_id = UBX_GNSS_ID_QZSS,
+//      .qzss_res_trk_ch = 1,
+//      .qzss_max_trk_ch = 1,
+//      .qzss_flags = {
+//         .en = 1,
+//         .sig_cfg_mask = (
+//             UBX_CFG_GNSS_FLAGS_QZSS_L1C_A
+//         )
+//      },
+
+      /* DISABLE OTHERS */
+      .sbas_gnss_id = 1,
+      .beidou_gnss_id = 3,
+      .glonass_gnss_id = 6
+    }
+  };
+
+  return ublox_send_packet((uint8_t*) &packet, true);
+}
+
 
 static inline int ublox_configure_navigation(void)
 {
@@ -420,8 +472,34 @@ static inline int ublox_configure_posecef(void)
 
       .config = {
         .msg_class = UBX_CLASS_NAV,
-        .msg_id = UBX_NAV_POSECEF,
+        .msg_id = UBX_NAV_PVT,
         .rate = 0x01
+      }
+    };
+
+    return ublox_send_packet((uint8_t*) &packet, true);
+}
+
+static inline int ublox_configure_rxm(void)
+{
+  struct __attribute__((packed)) {
+        ubx_header_t header;
+        ubx_cfg_msg_t config;
+        ubx_checksum_t checksum;
+    } packet = {
+
+      .header = {
+        .sync1  = UBX_SYNC1,
+        .sync2  = UBX_SYNC2,
+        .class  = UBX_CLASS_CFG,
+        .id     = UBX_CFG_MSG,
+        .length = (uint16_t) sizeof(ubx_cfg_msg_t)
+      },
+
+      .config = {
+        .msg_class = UBX_CLASS_RXM,
+        .msg_id = UBX_RXM_SVSI,
+        .rate = 0x02
       }
     };
 
@@ -442,25 +520,63 @@ static THD_FUNCTION(ublox_thd, arg)
             union {
               ubx_nav_posecef_t nav_posecef;
               ubx_nav_pvt_t nav_pvt;
+
+              ubx_rxm_svsi_t rxm_svsi;
+
+              uint8_t test[255];
             }
         )
       ];
 
       ubx_nav_posecef_t posecef;
       ubx_nav_pvt_t pvt;
+
+      ubx_rxm_svsi_t svsi;
     } payload;
 
-    if (!gps_configured) return;
+    while(!gps_configured);
 
     while(1) {
       header = ublox_get_header();
 
-      if (header.class == UBX_CLASS_NAV)
+      if (header.class == UBX_CLASS_RXM) {
+        //ublox_get_payload(&header, payload.raw_data);
+        DEBUG_PRINTLN("WOOHOO!");
+        DEBUG_PRINTLN("WOOHOO!");
+        DEBUG_PRINTLN("WOOHOO!");
+
+        //DEBUG_PRINT("%d\r\n", payload.svsi.num_vis);
+        uint8_t i_tow_1 = sdGet(ublox_seriald);
+        uint8_t i_tow_2 = sdGet(ublox_seriald);
+        uint8_t i_tow_3 = sdGet(ublox_seriald);
+        uint8_t i_tow_4 = sdGet(ublox_seriald);
+
+        uint8_t week_1 = sdGet(ublox_seriald);
+        uint8_t week_2 = sdGet(ublox_seriald);
+
+        uint8_t num_vis = sdGet(ublox_seriald);
+
+        DEBUG_PRINT("%d\r\n", num_vis);
+
+        DEBUG_PRINTLN("WOOHOO!");
+        DEBUG_PRINTLN("WOOHOO!");
+        DEBUG_PRINTLN("WOOHOO!");
+      } else if (header.class == UBX_CLASS_NAV)
         /* only this is implemented for now */
       {
         switch (header.id) {
           case UBX_NAV_POSECEF:
             ublox_get_payload(&header, payload.raw_data);
+            DEBUG_PRINTLN("WOOHOO!");
+            DEBUG_PRINTLN("WOOHOO!");
+            DEBUG_PRINTLN("WOOHOO!");
+
+            DEBUG_PRINT("%d, %d\r\n", payload.posecef.lon, payload.posecef.lat);
+            DEBUG_PRINT("%d\r\n", payload.posecef.height);
+
+            DEBUG_PRINTLN("WOOHOO!");
+            DEBUG_PRINTLN("WOOHOO!");
+            DEBUG_PRINTLN("WOOHOO!");
 
 //            snprintf(
 //              buf, 100,
@@ -482,6 +598,20 @@ static THD_FUNCTION(ublox_thd, arg)
             sdWrite(&SD4, (uint8_t *)"POSECEF packet.\r\n", 16);
             break;
           case UBX_NAV_PVT:
+            ublox_get_payload(&header, payload.raw_data);
+
+            DEBUG_PRINTLN("WOOHOO!");
+            DEBUG_PRINTLN("WOOHOO!");
+            DEBUG_PRINTLN("WOOHOO!");
+
+            DEBUG_PRINT("%d\r\n", payload.pvt.i_tow);
+            DEBUG_PRINT("%d, %d\r\n", payload.pvt.lon, payload.pvt.lat);
+
+            DEBUG_PRINTLN("WOOHOO!");
+            DEBUG_PRINTLN("WOOHOO!");
+            DEBUG_PRINTLN("WOOHOO!");
+
+
             sdWrite(&SD4, (uint8_t *)"PVT packet.\r\n", 12);
             break;
           default:
@@ -546,6 +676,7 @@ void ublox_init(SerialDriver* seriald)
       uint8_t navigation: 1;
       uint8_t sbas:       1;
       uint8_t posecef:    1;
+      uint8_t rxm:        1;
     } __attribute__((packed));
     uint8_t byte_val;
   } config_flags;
@@ -577,7 +708,9 @@ void ublox_init(SerialDriver* seriald)
 #endif
   config_flags.posecef = ublox_configure_posecef();
 
-  if (config_flags.byte_val == 0x00) {
+  config_flags.rxm = ublox_configure_rxm();
+
+  if (config_flags.byte_val == 0x3F) {
     gps_configured = true;
 #if DEBUG
     DEBUG_PRINTLN("   > GPS Successfully Configured!");

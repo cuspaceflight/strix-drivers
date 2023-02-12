@@ -351,4 +351,62 @@ typedef struct __attribute__((packed)){
    };
  } ubx_cfg_gnss_t;
 
+ /* UBX_CFG_GNSS_2
+  * GNSS system configuration (GPS Only)
+  */
+  typedef struct __attribute__((packed)) {
+    union {
+      uint8_t payload[12];
+      struct {
+        uint8_t msg_ver;
+        uint8_t num_trk_ch_hw;
+        uint8_t num_trk_ch_use;
+        uint8_t num_config_blocks;
+
+        uint8_t gps_gnss_id;
+        uint8_t gps_res_trk_ch;
+        uint8_t gps_max_trk_ch;
+        uint8_t gps_reserved1;
+        ubx_bitfield_gnss_flags_t gps_flags;
+
+        uint8_t qzss_gnss_id;
+        uint8_t qzss_res_trk_ch;
+        uint8_t qzss_max_trk_ch;
+        uint8_t qzss_reserved1;
+        ubx_bitfield_gnss_flags_t qzss_flags;
+
+        uint8_t sbas_gnss_id;
+        uint8_t sbas_res_trk_ch;
+        uint8_t sbas_max_trk_ch;
+        uint8_t sbas_reserved1;
+        ubx_bitfield_gnss_flags_t sbas_flags;
+
+        uint8_t beidou_gnss_id;
+        uint8_t beidou_res_trk_ch;
+        uint8_t beidou_max_trk_ch;
+        uint8_t beidou_reserved1;
+        ubx_bitfield_gnss_flags_t beidou_flags;
+
+        uint8_t glonass_gnss_id;
+        uint8_t glonass_res_trk_ch;
+        uint8_t glonass_max_trk_ch;
+        uint8_t glonass_reserved1;
+        ubx_bitfield_gnss_flags_t glonass_flags;
+      } __attribute__((packed));
+    };
+  } ubx_cfg_gnss_gps_only_t;
+
+
+  /* UBX_CFG_RXM
+   * RXM configuration
+   */
+   typedef struct __attribute__((packed)) {
+     union {
+       uint8_t payload[12];
+       struct {
+         uint8_t reserved_1;
+       } __attribute__((packed));
+     };
+   } ubx_cfg_rxm_t;
+
 #endif // CFG_H_

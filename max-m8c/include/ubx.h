@@ -9,6 +9,7 @@
 #include "packets/ack.h"
 #include "packets/cfg.h"
 #include "packets/nav.h"
+#include "packets/rxm.h"
 
 /* UBX sync bytes */
 #define UBX_SYNC1 0xB5
