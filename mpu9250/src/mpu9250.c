@@ -13,7 +13,7 @@ static const SPIConfig mpu9250_spi_cfg = {
   .error_cb = NULL,
   .ssport   = GPIOB,
   .sspad    = 0,
-  .cr1      = SPI_CR1_BR_0 | SPI_CR1_BR_1 | SPI_CR1_BR_2 | SPI_CR1_CPOL | SPI_CR1_CPHA,
+  .cr1      = SPI_CR1_BR_2 | SPI_CR1_CPOL | SPI_CR1_CPHA,
   .cr2      = 0
 };
 
@@ -33,10 +33,11 @@ static inline int mpu9250_write(uint8_t addr, uint8_t data)
 }
 static inline int mpu9250_read(uint8_t addr, uint8_t* rx_buf, size_t n)
 {
+  uint8_t addr_masked = addr | 0x80;
   spiAcquireBus(mpu9250_driver);
 
   spiSelect(mpu9250_driver);
-  spiSend(mpu9250_driver, 1, (void*)&addr);
+  spiSend(mpu9250_driver, 1, (void*)&addr_masked);
   spiReceive(mpu9250_driver, n, (void*)rx_buf);
   spiUnselect(mpu9250_driver);
 
@@ -95,7 +96,7 @@ uint16_t mpu9250_fifo_count(void)
 {
   union {
     struct {
-      uint8_t h, l;
+      uint8_t l, h;
     } __attribute__((packed));
     uint16_t x;
   } count;
