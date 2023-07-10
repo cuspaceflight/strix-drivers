@@ -13,7 +13,7 @@ static SPIConfig spi_cfg = {
   .error_cb  = NULL,
   .ssport   = GPIOA,
   .sspad    = 4,
-  .cr1      = SPI_CR1_BR_0 | SPI_CR1_BR_1 | SPI_CR1_BR_2 | SPI_CR1_CPOL | SPI_CR1_CPHA,
+  .cr1      = SPI_CR1_BR_2,
   .cr2      = 0
 };
 
@@ -59,7 +59,7 @@ void ms5611_read_cmd(const uint8_t* cmd, size_t rx_size, uint8_t* rx_buf)
 
 void ms5611_reset(void)
 {
-  ms5611_send_cmd_delay(&reset_cmd, 5);
+  ms5611_send_cmd_delay(&reset_cmd, 3);
 }
 
 void ms5611_init(void) {
@@ -102,12 +102,12 @@ float ms5611_convert_d2(uint8_t osr)
 
 uint32_t ms5611_adc_read(void)
 {
-  uint32_t result;
+  uint8_t result[3];
   ms5611_read_cmd(&adc_cmd, 3, (uint8_t*) &result);
 
-  DEBUG_PRINT("[BARO] ADC result: %x\r\n", result);
+  DEBUG_PRINT("[BARO] ADC result: 0x%x 0x%x 0x%x\r\n", result[0], result[1], result[2]);
 
-  return result;
+  return result[0] + (result[1] << 8) + (result[2] << 16);
 }
 
 uint16_t ms5611_prom_read(uint8_t addr)
@@ -121,14 +121,10 @@ uint16_t ms5611_prom_read(uint8_t addr)
 
   cmd.raw = MS5611_PROM_READ;
 
-//  cmd.bitfield.os = (addr & 0b001) << 2 |
-//                    (addr & 0b010)      |
-//                    (addr & 0b100) >> 2;
-
   cmd.bitfield.os = addr & 0b111;
 
   DEBUG_PRINT("cmd: %x\r\n", cmd.raw);
-  ms5611_read_cmd(&(cmd.raw), 2, (uint8_t*) &result);
+  ms5611_read_cmd(&cmd, 2, (uint8_t*) &result);
 
   return result;
 }
@@ -151,22 +147,10 @@ void ms5611_init_thd(void)
 #endif
   }
 
-  return;
-
-  ms5611_convert_d1(MS5611_OSR_4096);
-  ms5611_adc_read();
-
-  ms5611_convert_d1(MS5611_OSR_4096);
-  ms5611_adc_read();
-  ms5611_adc_read();
-  ms5611_adc_read();
-
-  ms5611_convert_d2(MS5611_OSR_4096);
-  ms5611_adc_read();
-  ms5611_adc_read();
-
-  ms5611_convert_d2(MS5611_OSR_4096);
-  ms5611_adc_read();
+  uint16_t crc = ms5611_prom_read(0b111);
+#if DEBUG
+  DEBUG_PRINT("CRC: %x\r\n", crc);
+#endif
 
 #if DEBUG
   DEBUG_PRINTLN("MS5611 (baro) Thread Init Complete!");
